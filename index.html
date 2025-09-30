@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTB 26-27 - School Book Demand</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b5797">
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+<header class="sticky top-0 bg-white border-b-4 border-blue-600 shadow-md z-50">
+  <div class="max-w-6xl mx-auto px-4 py-4 text-center">
+    <h1 class="text-2xl font-bold text-blue-800">📌 FTB 26-27</h1>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- School Info -->
+  <section class="bg-white rounded-lg shadow p-4 space-y-3">
+    <h2 class="text-xl font-bold text-blue-700 border-b-2 border-green-400 pb-2">School Info</h2>
+    <input type="text" id="schoolCode" placeholder="School Code" class="w-full border p-2 rounded">
+    <input type="text" id="schoolName" placeholder="School Name" class="w-full border p-2 rounded">
+    <input type="text" id="district" placeholder="District" class="w-full border p-2 rounded">
+    <input type="text" id="tehsil" placeholder="Tehsil" class="w-full border p-2 rounded">
+    <select id="gender" class="w-full border p-2 rounded">
+      <option value="">Gender</option>
+      <option value="Boys">Boys</option>
+      <option value="Girls">Girls</option>
+      <option value="Co-ed">Co-ed</option>
+    </select>
+    <input type="text" id="latitude" placeholder="Latitude" class="w-full border p-2 rounded">
+    <input type="text" id="longitude" placeholder="Longitude" class="w-full border p-2 rounded">
+    <input type="date" id="date" class="w-full border p-2 rounded">
+    <input type="text" id="monitorLogin" placeholder="Monitor Login" class="w-full border p-2 rounded">
+    <input type="text" id="appVersion" placeholder="App Version" value="1.0.0" class="w-full border p-2 rounded">
+    <div class="flex gap-4 items-center">
+      <label class="flex gap-1 items-center"><input type="checkbox" id="withoutEmis" class="accent-green-500"> Without EMIS</label>
+      <label class="flex gap-1 items-center"><input type="checkbox" id="isFata" class="accent-green-500"> Is FATA</label>
+      <label class="flex gap-1 items-center"><input type="checkbox" id="isGCS" class="accent-green-500"> Is GCS</label>
+    </div>
+    <div class="flex gap-4 items-center">
+      <label><input type="radio" name="status" value="open" class="accent-blue-500"> Open</label>
+      <label><input type="radio" name="status" value="closed" class="accent-blue-500"> Closed</label>
+    </div>
+  </section>
+
+  <!-- Enrollment & Books -->
+  <section class="bg-white rounded-lg shadow p-4 space-y-3">
+    <h2 class="text-xl font-bold text-blue-700 border-b-2 border-green-400 pb-2">Enrollment & Books</h2>
+    <select id="levelSelect" class="w-full border p-2 rounded">
+      <option value="">Select Level</option>
+      <option value="Primary">Primary</option>
+      <option value="Middle">Middle</option>
+      <option value="High">High</option>
+      <option value="Higher Secondary">Higher Secondary</option>
+    </select>
+    <div id="classesContainer" class="space-y-4 mt-2"></div>
+  </section>
+
+  <!-- Focal & Remarks -->
+  <section class="bg-white rounded-lg shadow p-4 space-y-3">
+    <h2 class="text-xl font-bold text-blue-700 border-b-2 border-green-400 pb-2">Focal Person & Remarks</h2>
+    <input type="text" id="focalName" placeholder="Focal Name" class="w-full border p-2 rounded">
+    <input type="text" id="focalContact" placeholder="Focal Contact" class="w-full border p-2 rounded">
+    <textarea id="remarks" placeholder="Remarks" class="w-full border p-2 rounded"></textarea>
+    <input type="text" id="img" placeholder="Image URL" class="w-full border p-2 rounded">
+  </section>
+
+  <!-- Actions -->
+  <section class="bg-white rounded-lg shadow p-4 space-y-2 flex flex-col">
+    <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded" onclick="downloadJSON()">Download JSON</button>
+    <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" id="installBtn" style="display:none;">Install App</button>
+  </section>
+
+</main>
+
+<div id="snackbar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg opacity-0 transition-opacity duration-300">JSON Downloaded Successfully!</div>
+
+<script>
+// --- Data ---
+const booksList = {
+  "Nursery":["Creative Arts"],
+  "KG":["Creative Arts","English Primer","Hindko Qaida","Khowar Qaida","Maths Primer","Pashto Qaida","Seraiki Qaida","Urdu Primer"],
+  "1":["Creative Arts & Drawing","English","General Knowledge","Hindko","Islamiyat","Khowar","Mathematics","Nazra Quran","Pashto","Seraiki","Urdu"],
+  "2":["Creative Arts & Drawing","General Knowledge","Hindko","Islamiyat","Khowar","Nazra Quran","Pashto","Seraiki","Urdu"],
+  "3":["Creative Arts & Drawing","English","Ethics","General Knowledge","Hindko","Islamiyat","Khowar","Mathematics","Nazra Quran","Pashto","Seraiki","Urdu"],
+  "4":["Creative Arts & Drawing","English","Ethics","General Science","Hindko","Islamiyat","Khowar","Mathematics","Nazra Quran","Pashto","Seraiki","Social Study (E)","Social Study (U)","Urdu"],
+  "5":["Creative Arts & Drawing","English","Ethics","General Science","Hindko","Islamiyat","Khowar","Mathematics","Nazra Quran","Pashto","Seraiki","Social Study (E)","Social Study (U)","Urdu"],
+  "6":["Arabic","Computer Science (E)","Computer Science (U)","Drawing (E)","Drawing (U)","Ethics","General Science","Geography (E)","Geography (U)","Hindko","History (E)","History (U)","Home Economics","HPE","Introduction to Technology","Islamiyat","Khowar","Maths","Pashto","Seraiki","Urdu","English","Mutala Quran-e-Hakeem (Revised)"],
+  "7":["Arabic","Computer Science (E)","Computer Science (U)","Drawing (E)","Drawing (U)","Ethics","General Science","Geography (E)","Geography (U)","Hindko","History (E)","History (U)","Home Economics","HPE","Introduction to Technology","Islamiyat","Khowar","Maths","Pashto","Seraiki","Urdu","English","Mutala Quran-e-Hakeem (Revised)"],
+  "8":["Arabic","Computer Science (E)","Computer Science (U)","Drawing (E)","Drawing (U)","Ethics","General Science","Geography (E)","Geography (U)","History (E)","History (U)","Home Economics","HPE","Introduction to Technology","Islamiyat","Maths","Mutala Quran-e-Hakeem (Revised)","Pashto","Hindko","Seraiki","Khowar","Urdu","English"],
+  "9":["Arabic","Art & Model Drawing (E)","Art & Model Drawing (U)","Chemistry (New)","Civics","Computer Science (E) (New)","Computer Science (U) (New)","Food and Nutrition","General Maths","General Science","Home Economics","HPE","Islamiyat Elective","Pakistan Studies (U) (New)","Urdu Compulsory (New)","Ethics","Islamic History","Tajweed-ul-Quran","Biology (New)","English (New)","Mathematics (New)","Mutala Quran-e-Hakeem (Revised)","Pakistan Studies (E) (New)","Pashto","Hindko","Khowar","Seraiki","Physics (New)"],
+  "10":["Ethics","Islamic History","Tajweed-ul-Quran","Arabic","Art & Model Drawing (E)","Art & Model Drawing (U)","Biology","Chemistry","Civics","Computer Science (E)","Computer Science (U)","English","Food and Nutrition","General Maths","General Science","Home Economics","HPE","Islamiyat Elective","Mathematics","Mutala Quran-e-Hakeem (Revised)","Pakistan Studies (E)","Pakistan Studies (U)","Physics","Urdu Compulsory","Hindko (NEW)","Seraiki (NEW)","Khowar (NEW)","Pashto (NEW)"],
+  "11":["Arabic","Chemistry (New)","Civics","Computer Science (New)","English Literature","Fine Arts","General Maths","History of Modern World","HPE","Islamic History","Islamic Studies","Islamiyat (Compulsory) (New)","Library Science","Mathematics (New)","Mutala Quran-e-Hakeem (Revised)","Pashto","Physics (New)","Statistics","Urdu Advance","Urdu Compulsory (New)","Ethics","Biology (New)","English (New)"],
+  "12":["Arabic","Biology","Chemistry","Civics","Computer Science","English","English Literature","Fine Arts","General Maths","History of Modern World","HPE","Islamic History","Islamic Studies","Library Science","Mathematics","Mutala Quran-e-Hakeem (Revised)","Pakistan Studies","Physics","Statistics","Urdu Advance","Urdu Compulsory","Ethics","Pashto","English"]
+};
+
+const levelClasses = {"Primary":["Nursery","KG","1","2","3","4","5"],"Middle":["6","7","8"],"High":["9","10"],"Higher Secondary":["11","12"]};
+
+let enrollmentData = {};
+let deferredPrompt;
+
+// --- PWA Install ---
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); 
+  deferredPrompt=e; 
+  document.getElementById('installBtn').style.display='inline-block'; 
+});
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+  if(deferredPrompt){ 
+    deferredPrompt.prompt(); 
+    await deferredPrompt.userChoice; 
+    deferredPrompt=null; 
+    document.getElementById('installBtn').style.display='none'; 
+  } 
+});
+
+// --- Event Listeners ---
+document.getElementById("levelSelect").addEventListener("change", updateClasses);
+document.getElementById("isFata").addEventListener("change", updateClasses);
+document.getElementById("isGCS").addEventListener("change", updateClasses);
+
+// --- Functions ---
+function updateClasses(){
+  const level = document.getElementById("levelSelect").value;
+  const isFata = document.getElementById("isFata").checked;
+  const isGCS = document.getElementById("isGCS").checked;
+  let classes = [...levelClasses[level] || []];
+
+  if(level === "Middle" && isGCS){
+    classes = [...levelClasses["Primary"], ...levelClasses["Middle"]];
+  }
+
+  if(isFata && ['Middle','High','Higher Secondary'].includes(level) && !classes.includes('5')) classes.push('5');
+
+  const container = document.getElementById("classesContainer");
+  container.innerHTML = '';
+  enrollmentData = {};
+
+  classes.forEach(cls => {
+    const div = document.createElement("div");
+    div.className = "bg-gray-50 p-3 rounded-lg shadow space-y-2";
+    div.dataset.class = cls;
+    div.innerHTML = `
+      <label>Class ${cls} Enrollment: <input type="number" class="enroll w-full border p-1 rounded" value="0"></label>
+      <div class="books-container space-y-1 overflow-x-auto"></div>
+    `;
+    container.appendChild(div);
+    enrollmentData[cls] = 0;
+
+    const enrollInput = div.querySelector(".enroll");
+    enrollInput.addEventListener('input', () => {
+      enrollmentData[cls] = parseInt(enrollInput.value) || 0;
+      updateNetForClass(cls);
+    });
+
+    const booksContainer = div.querySelector(".books-container");
+    (booksList[cls] || []).forEach(book => {
+      const bookDiv = document.createElement("div");
+      bookDiv.className = "flex gap-2 items-center min-w-[250px]";
+      bookDiv.innerHTML = `
+        <span class="w-1/2 font-medium">${book}</span>
+        <input type="number" placeholder="Old Stock" class="oldStock w-1/4 border p-1 rounded" value="0">
+        <input type="number" placeholder="New Stock" class="newStock w-1/4 border p-1 rounded" value="0">
+        <input type="number" placeholder="New Demand" class="newDemand w-1/4 border p-1 rounded" value="0">
+        <input type="number" placeholder="Net Demand" class="netDemand w-1/4 border p-1 rounded bg-gray-100" readonly>
+      `;
+      booksContainer.appendChild(bookDiv);
+
+      bookDiv.querySelectorAll(".oldStock,.newStock,.newDemand").forEach(input => {
+        input.addEventListener('input', () => validateBook(cls, bookDiv));
+      });
+    });
+  });
+}
+
+function updateNetForClass(cls){
+  const classDiv = document.querySelector(`.bg-gray-50[data-class="${cls}"]`);
+  if(!classDiv) return;
+  const enrollment = enrollmentData[cls] || 0;
+  classDiv.querySelectorAll(".books-container > div").forEach(bookDiv=>{
+    validateBook(cls, bookDiv);
+  });
+}
+
+function validateBook(cls, bookDiv){
+  const enrollment = enrollmentData[cls] || 0;
+  const oldVal = parseInt(bookDiv.querySelector(".oldStock").value) || 0;
+  const newVal = parseInt(bookDiv.querySelector(".newStock").value) || 0;
+  const newDemand = parseInt(bookDiv.querySelector(".newDemand").value) || 0;
+
+  // Net demand
+  const net = enrollment - (oldVal + newVal + newDemand);
+  bookDiv.querySelector(".netDemand").value = net >= 0 ? net : 0;
+
+  // Validation
+  if(newDemand - enrollment > 5){
+    bookDiv.querySelector(".newDemand").classList.add("border-red-500");
+  } else {
+    bookDiv.querySelector(".newDemand").classList.remove("border-red-500");
+  }
+}
+
+// --- Download JSON ---
+function downloadJSON(){
+  const data = {
+    school_code:document.getElementById('schoolCode').value,
+    school_name:document.getElementById('schoolName').value,
+    district:document.getElementById('district').value,
+    tehsil:document.getElementById('tehsil').value,
+    gender:document.getElementById('gender').value,
+    level:document.getElementById('levelSelect').value,
+    circle_office:"",
+    lat:document.getElementById('latitude').value,
+    long:document.getElementById('longitude').value,
+    date:document.getElementById('date').value,
+    monitor_login:document.getElementById('monitorLogin').value,
+    app_version:document.getElementById('appVersion').value,
+    without_emis:document.getElementById('withoutEmis').checked?"1":"0",
+    isFata:document.getElementById('isFata').checked?"1":"0",
+    isGCS:document.getElementById('isGCS').checked?"1":"0",
+    status:document.querySelector('input[name="status"]:checked')?.value||'',
+    classes:[]
+  };
+
+  let allClasses = document.querySelectorAll(".bg-gray-50");
+  allClasses.forEach(clsDiv=>{
+    const clsName = clsDiv.dataset.class;
+    let booksData = [];
+    clsDiv.querySelectorAll(".books-container > div").forEach(bookDiv=>{
+      booksData.push({
+        book:bookDiv.querySelector("span").innerText,
+        oldStock:bookDiv.querySelector(".oldStock").value,
+        newStock:bookDiv.querySelector(".newStock").value,
+        newDemand:bookDiv.querySelector(".newDemand").value,
+        netDemand:bookDiv.querySelector(".netDemand").value
+      });
+    });
+    data.classes.push({class:clsName,enrollment:enrollmentData[clsName]||0,books:booksData});
+  });
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${data.school_code || 'school'}_ftb.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showSnackbar("JSON Downloaded Successfully!");
+}
+
+// --- Snackbar ---
+function showSnackbar(msg){
+  const s = document.getElementById('snackbar');
+  s.innerText = msg;
+  s.classList.add('opacity-100');
+  setTimeout(()=>s.classList.remove('opacity-100'),3000);
+}
+
+</script>
+</body>
+</html>
