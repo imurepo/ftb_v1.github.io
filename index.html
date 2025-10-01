@@ -1,12 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FTB 26-27 - School Book Demand</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2b5797">
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Error shake animation */
+  .error-shake { animation: shake 0.28s; }
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+  }
+</style>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -25,25 +37,29 @@
     <input type="text" id="schoolName" placeholder="School Name" class="w-full border p-2 rounded">
     <input type="text" id="district" placeholder="District" class="w-full border p-2 rounded">
     <input type="text" id="tehsil" placeholder="Tehsil" class="w-full border p-2 rounded">
+    <input type="text" id="circleOffice" placeholder="Circle Office" class="w-full border p-2 rounded">
     <select id="gender" class="w-full border p-2 rounded">
       <option value="">Gender</option>
       <option value="Boys">Boys</option>
       <option value="Girls">Girls</option>
       <option value="Co-ed">Co-ed</option>
     </select>
-    <input type="text" id="latitude" placeholder="Latitude" class="w-full border p-2 rounded">
-    <input type="text" id="longitude" placeholder="Longitude" class="w-full border p-2 rounded">
     <input type="date" id="date" class="w-full border p-2 rounded">
     <input type="text" id="monitorLogin" placeholder="Monitor Login" class="w-full border p-2 rounded">
     <input type="text" id="appVersion" placeholder="App Version" value="1.0.0" class="w-full border p-2 rounded">
-    <div class="flex gap-4 items-center">
+    <div class="flex flex-wrap gap-4 items-center mt-2">
       <label class="flex gap-1 items-center"><input type="checkbox" id="withoutEmis" class="accent-green-500"> Without EMIS</label>
       <label class="flex gap-1 items-center"><input type="checkbox" id="isFata" class="accent-green-500"> Is FATA</label>
-      <label class="flex gap-1 items-center"><input type="checkbox" id="isGCS" class="accent-green-500"> Is GCS</label>
+      <label class="flex gap-1 items-center"><input type="checkbox" id="isGCS" class="accent-blue-500"> Is GCS</label>
     </div>
-    <div class="flex gap-4 items-center">
+    <div class="flex gap-4 items-center mt-2">
       <label><input type="radio" name="status" value="open" class="accent-blue-500"> Open</label>
       <label><input type="radio" name="status" value="closed" class="accent-blue-500"> Closed</label>
+    </div>
+    <div class="flex gap-2 mt-2 flex-wrap">
+      <input type="text" id="lat" placeholder="Latitude" class="w-1/2 border p-2 rounded" readonly>
+      <input type="text" id="long" placeholder="Longitude" class="w-1/2 border p-2 rounded" readonly>
+      <button class="bg-blue-600 text-white px-2 rounded" onclick="getLocation()">Get Location</button>
     </div>
   </section>
 
@@ -66,21 +82,26 @@
     <input type="text" id="focalName" placeholder="Focal Name" class="w-full border p-2 rounded">
     <input type="text" id="focalContact" placeholder="Focal Contact" class="w-full border p-2 rounded">
     <textarea id="remarks" placeholder="Remarks" class="w-full border p-2 rounded"></textarea>
-    <input type="text" id="img" placeholder="Image URL" class="w-full border p-2 rounded">
   </section>
 
   <!-- Actions -->
   <section class="bg-white rounded-lg shadow p-4 space-y-2 flex flex-col">
-    <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded" onclick="downloadJSON()">Download JSON</button>
-    <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" id="installBtn" style="display:none;">Install App</button>
+    <div class="flex gap-2">
+      <button id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded" onclick="downloadJSON(event)">Download JSON</button>
+      <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded" id="installBtn" style="display:none;">Install App</button>
+    </div>
+    <div class="text-sm text-gray-600">Form auto-saves locally while you type.</div>
   </section>
 
 </main>
 
-<div id="snackbar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg opacity-0 transition-opacity duration-300">JSON Downloaded Successfully!</div>
+<div id="snackbar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg opacity-0 transition-opacity duration-300"></div>
 
 <script>
-// --- Data ---
+/* =========================
+   Data / Config
+   ========================= */
+const STORAGE_KEY = 'ftbDraft_v1';
 const booksList = {
   "Nursery":["Creative Arts"],
   "KG":["Creative Arts","English Primer","Hindko Qaida","Khowar Qaida","Maths Primer","Pashto Qaida","Seraiki Qaida","Urdu Primer"],
@@ -97,171 +118,522 @@ const booksList = {
   "11":["Arabic","Chemistry (New)","Civics","Computer Science (New)","English Literature","Fine Arts","General Maths","History of Modern World","HPE","Islamic History","Islamic Studies","Islamiyat (Compulsory) (New)","Library Science","Mathematics (New)","Mutala Quran-e-Hakeem (Revised)","Pashto","Physics (New)","Statistics","Urdu Advance","Urdu Compulsory (New)","Ethics","Biology (New)","English (New)"],
   "12":["Arabic","Biology","Chemistry","Civics","Computer Science","English","English Literature","Fine Arts","General Maths","History of Modern World","HPE","Islamic History","Islamic Studies","Library Science","Mathematics","Mutala Quran-e-Hakeem (Revised)","Pakistan Studies","Physics","Statistics","Urdu Advance","Urdu Compulsory","Ethics","Pashto","English"]
 };
+const levelClasses = {"Primary":["Nursery","KG","1","2","3","4","5"],"Middle":["6","7","8"],"High":["6","7","8","9","10"],"Higher Secondary":["6","7","8","9","10","11","12"]};
 
-const levelClasses = {"Primary":["Nursery","KG","1","2","3","4","5"],"Middle":["6","7","8"],"High":["9","10"],"Higher Secondary":["11","12"]};
-
-let enrollmentData = {};
+/* -------------------------
+   PWA install prompt support
+   ------------------------- */
 let deferredPrompt;
-
-// --- PWA Install ---
 window.addEventListener('beforeinstallprompt', e=>{
-  e.preventDefault(); 
-  deferredPrompt=e; 
-  document.getElementById('installBtn').style.display='inline-block'; 
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'inline-block';
 });
 document.getElementById('installBtn').addEventListener('click', async ()=>{
-  if(deferredPrompt){ 
-    deferredPrompt.prompt(); 
-    await deferredPrompt.userChoice; 
-    deferredPrompt=null; 
-    document.getElementById('installBtn').style.display='none'; 
-  } 
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').style.display = 'none';
+  }
 });
 
-// --- Event Listeners ---
-document.getElementById("levelSelect").addEventListener("change", updateClasses);
-document.getElementById("isFata").addEventListener("change", updateClasses);
-document.getElementById("isGCS").addEventListener("change", updateClasses);
+/* -------------------------
+   Snackbar helper
+   ------------------------- */
+function showSnackbar(msg){
+  const sb = document.getElementById('snackbar');
+  sb.innerText = msg;
+  sb.classList.add('opacity-100');
+  setTimeout(()=> sb.classList.remove('opacity-100'), 3000);
+}
 
-// --- Functions ---
+/* -------------------------
+   Geolocation (auto-get)
+   ------------------------- */
+function getLocation(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      document.getElementById('lat').value = pos.coords.latitude.toFixed(7);
+      document.getElementById('long').value = pos.coords.longitude.toFixed(7);
+      showSnackbar("Location fetched!");
+    }, ()=> showSnackbar("Unable to fetch location"));
+  } else {
+    showSnackbar("Geolocation not supported");
+  }
+}
+
+/* =========================
+   Autosave (localStorage) - debounced
+   ========================= */
+let saveTimeout = null;
+let isRestoring = false;
+function saveDraft(){
+  if(isRestoring) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(()=>{
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collectFormData()));
+      // silent save
+    } catch(e){
+      console.error("saveDraft error", e);
+    }
+  }, 350);
+}
+
+function collectFormData(){
+  const data = {
+    school_code: document.getElementById('schoolCode').value.trim() || "",
+    school_name: document.getElementById('schoolName').value.trim() || "",
+    district: document.getElementById('district').value.trim() || "",
+    tehsil: document.getElementById('tehsil').value.trim() || "",
+    circle_office: document.getElementById('circleOffice').value.trim() || "",
+    gender: document.getElementById('gender').value || "",
+    level: document.getElementById('levelSelect').value || "",
+    date: document.getElementById('date').value || "",
+    monitor_login: document.getElementById('monitorLogin').value.trim() || "",
+    app_version: document.getElementById('appVersion').value.trim() || "",
+    without_emis: document.getElementById('withoutEmis').checked,
+    isFata: document.getElementById('isFata').checked,
+    isGCS: document.getElementById('isGCS').checked,
+    status: (document.querySelector('input[name="status"]:checked')||{}).value || "",
+    lat: document.getElementById('lat').value.trim() || "",
+    long: document.getElementById('long').value.trim() || "",
+    focal_name: document.getElementById('focalName').value.trim() || "",
+    focal_contact: document.getElementById('focalContact').value.trim() || "",
+    remarks: document.getElementById('remarks').value.trim() || "",
+    classes: []
+  };
+
+  document.querySelectorAll('#classesContainer .bg-gray-50').forEach(classDiv=>{
+    const clsName = classDiv.dataset.class || "";
+    const enrollVal = classDiv.querySelector('.enroll')?.value.trim() || "";
+    const books = [];
+    classDiv.querySelectorAll('[data-book]').forEach(bd=>{
+      const book = bd.dataset.book || "";
+      const oldStock = bd.querySelector('.oldStock')?.value.trim() || "";
+      const newStock = bd.querySelector('.newStock')?.value.trim() || "";
+      const newDemand = bd.querySelector('.newDemand')?.value.trim() || "";
+      books.push({ book, oldStock, newStock, newDemand });
+    });
+    data.classes.push({ className: clsName, enrollment: enrollVal, books });
+  });
+
+  return data;
+}
+
+function restoreDraft(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return;
+  try {
+    isRestoring = true;
+    const data = JSON.parse(raw);
+
+    // basic fields
+    document.getElementById('schoolCode').value = data.school_code || "";
+    document.getElementById('schoolName').value = data.school_name || "";
+    document.getElementById('district').value = data.district || "";
+    document.getElementById('tehsil').value = data.tehsil || "";
+    document.getElementById('circleOffice').value = data.circle_office || "";
+    document.getElementById('gender').value = data.gender || "";
+    document.getElementById('monitorLogin').value = data.monitor_login || "";
+    document.getElementById('appVersion').value = data.app_version || "";
+    document.getElementById('withoutEmis').checked = !!data.without_emis;
+    document.getElementById('isFata').checked = !!data.isFata;
+    document.getElementById('isGCS').checked = !!data.isGCS;
+    if(data.status){
+      const r = document.querySelector(`input[name="status"][value="${data.status}"]`);
+      if(r) r.checked = true;
+    }
+    document.getElementById('lat').value = data.lat || "";
+    document.getElementById('long').value = data.long || "";
+    document.getElementById('focalName').value = data.focal_name || "";
+    document.getElementById('focalContact').value = data.focal_contact || "";
+    document.getElementById('remarks').value = data.remarks || "";
+
+    // level + classes - set level and build DOM
+    if(data.level){
+      document.getElementById('levelSelect').value = data.level;
+    }
+    updateClasses();
+
+    // populate enrollments & books
+    if(Array.isArray(data.classes)){
+      data.classes.forEach(clsObj=>{
+        const clsName = clsObj.className;
+        const classDiv = Array.from(document.querySelectorAll('#classesContainer .bg-gray-50'))
+                              .find(d => (d.dataset.class || "") === clsName);
+        if(!classDiv) return;
+        if(classDiv.querySelector('.enroll') && clsObj.enrollment !== undefined){
+          classDiv.querySelector('.enroll').value = clsObj.enrollment;
+        }
+        if(Array.isArray(clsObj.books)){
+          clsObj.books.forEach(b=>{
+            if(b && b.book){
+              addBook(classDiv, b.book, b.oldStock || b.old_stock || "", b.newStock || b.new_stock || "", b.newDemand || b.new_demand || "");
+            }
+          });
+        }
+      });
+    }
+
+  } catch(e){
+    console.error("Restore failed", e);
+  } finally {
+    isRestoring = false;
+  }
+}
+
+/* =========================
+   Build classes UI
+   ========================= */
+document.getElementById("levelSelect").addEventListener("change", ()=>{ updateClasses(); saveDraft(); });
+document.getElementById("isFata").addEventListener("change", ()=>{ updateClasses(); saveDraft(); });
+document.getElementById("isGCS").addEventListener("change", ()=>{ updateClasses(); saveDraft(); });
+
 function updateClasses(){
   const level = document.getElementById("levelSelect").value;
   const isFata = document.getElementById("isFata").checked;
   const isGCS = document.getElementById("isGCS").checked;
-  let classes = [...levelClasses[level] || []];
 
-  if(level === "Middle" && isGCS){
-    classes = [...levelClasses["Primary"], ...levelClasses["Middle"]];
+  let classes = [...(levelClasses[level] || [])];
+
+  if(isFata && ['Primary','Middle','High','Higher Secondary'].includes(level)){
+    if(!classes.includes('5')) classes.unshift('5');
+    classes.push('FTB FATA');
   }
 
-  if(isFata && ['Middle','High','Higher Secondary'].includes(level) && !classes.includes('5')) classes.push('5');
+  if(isGCS && level === 'Middle'){
+    classes = [...levelClasses['Primary'], ...levelClasses['Middle']];
+  } else if(isGCS && level === 'Primary'){
+    classes = [...levelClasses['Primary']];
+  }
 
   const container = document.getElementById("classesContainer");
-  container.innerHTML = '';
-  enrollmentData = {};
+  container.innerHTML = "";
 
-  classes.forEach(cls => {
+  classes.forEach(cls=>{
     const div = document.createElement("div");
-    div.className = "bg-gray-50 p-3 rounded-lg shadow space-y-2";
+    div.className = "bg-gray-50 p-2 rounded";
     div.dataset.class = cls;
-    div.innerHTML = `
-      <label>Class ${cls} Enrollment: <input type="number" class="enroll w-full border p-1 rounded" value="0"></label>
-      <div class="books-container space-y-1 overflow-x-auto"></div>
-    `;
-    container.appendChild(div);
-    enrollmentData[cls] = 0;
 
-    const enrollInput = div.querySelector(".enroll");
-    enrollInput.addEventListener('input', () => {
-      enrollmentData[cls] = parseInt(enrollInput.value) || 0;
-      updateNetForClass(cls);
+    const enrollHTML = (cls === 'GCS') ? '' : `<input type="number" min="0" inputmode="numeric" class="enroll border p-1 rounded w-1/2 mb-1" placeholder="Enrollment">`;
+
+    div.innerHTML = `<h3 class="font-bold text-blue-700">${cls}${cls==='GCS'?' (GCS)': ''} Enrollment</h3>
+                     ${enrollHTML}
+                     <div class="books-container space-y-1 mt-2"></div>`;
+    container.appendChild(div);
+
+    const bookDiv = div.querySelector(".books-container");
+
+    if(cls !== 'GCS' && booksList[cls]){
+      const select = document.createElement("select");
+      select.className = "bookSelect border p-1 rounded w-full";
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.text = "Select Book";
+      select.appendChild(defaultOption);
+      (booksList[cls]||[]).forEach(b=>{
+        const opt = document.createElement("option");
+        opt.value = b;
+        opt.text = b;
+        select.appendChild(opt);
+      });
+
+      const addBtn = document.createElement("button");
+      addBtn.innerText = "Add Book";
+      addBtn.type = "button";
+      addBtn.className = "bg-blue-500 text-white px-2 py-1 rounded ml-2";
+
+      const controlDiv = document.createElement("div");
+      controlDiv.className = "flex items-center gap-2 my-2";
+      controlDiv.appendChild(select);
+      controlDiv.appendChild(addBtn);
+      bookDiv.appendChild(controlDiv);
+
+      addBtn.addEventListener("click", ()=>{
+        const selected = select.value;
+        if(!selected) return;
+        addBook(div, selected);
+        saveDraft();
+      });
+    }
+
+    // wire enroll input to saveDraft + validation UI
+    const enrollInput = div.querySelector('.enroll');
+    if(enrollInput){
+      enrollInput.addEventListener('input', (e)=>{
+        enrollInput.classList.remove('border-red-500');
+        saveDraft();
+      });
+    }
+  });
+}
+
+/* =========================
+   Add a book row for a class
+   ========================= */
+function addBook(classDiv, bookName, oldStockVal = "", newStockVal = "", newDemandVal = ""){
+  const bookContainer = classDiv.querySelector('.books-container');
+  if(!bookContainer) return;
+
+  const already = Array.from(bookContainer.querySelectorAll('[data-book]')).some(b => b.dataset.book === bookName);
+  if(already){
+    showSnackbar("Book already added");
+    return;
+  }
+
+  const bdiv = document.createElement('div');
+  bdiv.dataset.book = bookName;
+  bdiv.className = "flex flex-col border p-2 rounded my-1 bg-white";
+  bdiv.innerHTML = `
+    <div class="flex justify-between items-start">
+      <span class="font-semibold">${bookName}</span>
+      <button type="button" class="removeBook text-sm text-red-600">Remove</button>
+    </div>
+    <div class="mt-2 grid grid-cols-2 gap-2">
+      <input type="number" min="0" inputmode="numeric" placeholder="Old Stock" class="oldStock border p-1 rounded" value="${oldStockVal}">
+      <input type="number" min="0" inputmode="numeric" placeholder="New Stock" class="newStock border p-1 rounded" value="${newStockVal}">
+      <input type="number" min="0" inputmode="numeric" placeholder="New Demand" class="newDemand border p-1 rounded" value="${newDemandVal}">
+      <input type="number" placeholder="Net Demand" class="netDemand border p-1 rounded" readonly>
+    </div>
+  `;
+  bookContainer.appendChild(bdiv);
+
+  const oldStock = bdiv.querySelector('.oldStock');
+  const newStock = bdiv.querySelector('.newStock');
+  const newDemand = bdiv.querySelector('.newDemand');
+  const net = bdiv.querySelector('.netDemand');
+  const removeBtn = bdiv.querySelector('.removeBook');
+
+  function recalc(){
+    const os = parseInt(oldStock.value) || 0;
+    const ns = parseInt(newStock.value) || 0;
+    const nd = parseInt(newDemand.value) || 0;
+    let netVal = nd - (os + ns);
+    if(netVal < 0) netVal = 0;
+    net.value = netVal;
+  }
+
+  [oldStock, newStock, newDemand].forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      recalc();
+      inp.classList.remove('border-red-500');
+      saveDraft();
+    });
+  });
+
+  removeBtn.addEventListener('click', ()=>{
+    bdiv.remove();
+    saveDraft();
+  });
+
+  // initial calculation
+  recalc();
+}
+
+/* =========================
+   Global listeners -> autosave
+   ========================= */
+document.addEventListener('input', (e)=>{
+  if(isRestoring) return;
+  saveDraft();
+});
+document.addEventListener('change', (e)=>{
+  if(isRestoring) return;
+  saveDraft();
+});
+
+/* =========================
+   Download JSON
+   ========================= */
+function showFieldError(el){
+  if(!el) return;
+  el.classList.add('border-red-500','error-shake');
+  setTimeout(()=> el.classList.remove('error-shake'), 300);
+}
+
+async function downloadJSON(event){
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerText = "Processing...";
+
+  const requiredFields=[{id:'schoolCode',name:'School Code'},{id:'schoolName',name:'School Name'},{id:'district',name:'District'},{id:'tehsil',name:'Tehsil'},{id:'circleOffice',name:'Circle Office'},{id:'levelSelect',name:'Level'},{id:'gender',name:'Gender'}];
+  for(const f of requiredFields){
+    const elem = document.getElementById(f.id);
+    if(!elem || (elem.value || "").toString().trim() === ""){
+      showSnackbar(`${f.name} is required`);
+      showFieldError(elem);
+      btn.disabled=false;
+      btn.innerText="Download JSON";
+      return;
+    }
+  }
+  if(!document.querySelector('input[name="status"]:checked')){
+    showSnackbar("Please select Open/Closed status");
+    btn.disabled=false;
+    btn.innerText="Download JSON";
+    return;
+  }
+
+  let valid = true;
+  document.querySelectorAll("#classesContainer .bg-gray-50").forEach(classDiv=>{
+    const enrollVal = classDiv.querySelector('.enroll')?.value.trim() || "";
+    const enrollNum = enrollVal === "" ? null : parseInt(enrollVal);
+    classDiv.querySelectorAll(".newDemand").forEach(nd=>{
+      if((nd.value || "").toString().trim() === ""){
+        nd.classList.add('border-red-500','error-shake');
+        setTimeout(()=>nd.classList.remove('error-shake'),300);
+        valid = false;
+        return;
+      }
+      const newVal = parseInt(nd.value) || 0;
+      if(enrollNum !== null && Math.abs(newVal - enrollNum) > 5){
+        nd.classList.add('border-red-500','error-shake');
+        setTimeout(()=>nd.classList.remove('error-shake'),300);
+        valid = false;
+      } else {
+        nd.classList.remove('border-red-500');
+      }
     });
 
-    const booksContainer = div.querySelector(".books-container");
-    (booksList[cls] || []).forEach(book => {
-      const bookDiv = document.createElement("div");
-      bookDiv.className = "flex gap-2 items-center min-w-[250px]";
-      bookDiv.innerHTML = `
-        <span class="w-1/2 font-medium">${book}</span>
-        <input type="number" placeholder="Old Stock" class="oldStock w-1/4 border p-1 rounded" value="0">
-        <input type="number" placeholder="New Stock" class="newStock w-1/4 border p-1 rounded" value="0">
-        <input type="number" placeholder="New Demand" class="newDemand w-1/4 border p-1 rounded" value="0">
-        <input type="number" placeholder="Net Demand" class="netDemand w-1/4 border p-1 rounded bg-gray-100" readonly>
-      `;
-      booksContainer.appendChild(bookDiv);
+    // Ensure books are added if enrollment > 0
+    if(enrollNum > 0 && classDiv.querySelectorAll('[data-book]').length === 0){
+      valid = false;
+      showSnackbar(`Please add books for class ${classDiv.dataset.class}`);
+    }
+  });
 
-      bookDiv.querySelectorAll(".oldStock,.newStock,.newDemand").forEach(input => {
-        input.addEventListener('input', () => validateBook(cls, bookDiv));
+  if(!valid){
+    showSnackbar("Fix highlighted fields");
+    btn.disabled=false;
+    btn.innerText="Download JSON";
+    return;
+  }
+
+  // Build booksArr and classValues
+  const booksArr = [];
+  const classValues = { nursery: "", kg: "", class_1: "", class_2: "", class_3: "", class_4: "", class_5: "", class_6: "", class_7: "", class_8: "", class_9: "", class_10: "", class_11: "", class_12: "" };
+
+  document.querySelectorAll('#classesContainer .bg-gray-50').forEach(classDiv=>{
+    const clsName = classDiv.dataset.class || "";
+    const enrollVal = classDiv.querySelector('.enroll')?.value.trim() || "";
+    switch((clsName || "").toLowerCase()){
+      case 'nursery': classValues.nursery = enrollVal; break;
+      case 'kg': classValues.kg = enrollVal; break;
+      default:
+        if(/^\d+$/.test(clsName)) classValues[`class_${clsName}`] = enrollVal;
+        break;
+    }
+
+    classDiv.querySelectorAll('[data-book]').forEach(bookDiv=>{
+      const os = bookDiv.querySelector('.oldStock')?.value.trim() || "";
+      const ns = bookDiv.querySelector('.newStock')?.value.trim() || "";
+      const nd = bookDiv.querySelector('.newDemand')?.value.trim() || "";
+      let net = "";
+      if(nd !== ""){
+        const osNum = os === "" ? 0 : parseInt(os);
+        const nsNum = ns === "" ? 0 : parseInt(ns);
+        const ndNum = parseInt(nd) || 0;
+        net = ndNum - (osNum + nsNum);
+        if(net < 0) net = 0;
+      }
+      booksArr.push({
+        class: classDiv.dataset.class || "",
+        book: bookDiv.dataset.book || "",
+        old_stock: os === "" ? "" : os.toString(),
+        new_stock: ns === "" ? "" : ns.toString(),
+        new_demand: nd === "" ? "" : nd.toString(),
+        net_demand: net === "" ? "" : net.toString()
       });
     });
   });
-}
 
-function updateNetForClass(cls){
-  const classDiv = document.querySelector(`.bg-gray-50[data-class="${cls}"]`);
-  if(!classDiv) return;
-  const enrollment = enrollmentData[cls] || 0;
-  classDiv.querySelectorAll(".books-container > div").forEach(bookDiv=>{
-    validateBook(cls, bookDiv);
-  });
-}
+  const jsonData = {
+    school_code: document.getElementById('schoolCode').value.trim() || "",
+    school_name: document.getElementById('schoolName').value.trim() || "",
+    district: document.getElementById('district').value.trim() || "",
+    tehsil: document.getElementById('tehsil').value.trim() || "",
+    gender: document.getElementById('gender').value || "",
+    level: document.getElementById('levelSelect').value || "",
+    circle_office: document.getElementById('circleOffice').value.trim() || "",
+    lat: document.getElementById('lat').value.trim() || "",
+    long: document.getElementById('long').value.trim() || "",
+    date: document.getElementById('date').value || "",
+    monitor_login: document.getElementById('monitorLogin').value.trim() || "",
+    app_version: document.getElementById('appVersion').value.trim() || "",
+    without_emis: document.getElementById('withoutEmis').checked ? "1" : "0",
+    status: (document.querySelector('input[name="status"]:checked')||{}).value || "",
+    focal_name: document.getElementById('focalName').value.trim() || "",
+    focal_contact: document.getElementById('focalContact').value.trim() || "",
+    remarks: document.getElementById('remarks').value.trim() || "",
+    img: "",
+    ...classValues,
+    _list_books: booksArr
+  };
 
-function validateBook(cls, bookDiv){
-  const enrollment = enrollmentData[cls] || 0;
-  const oldVal = parseInt(bookDiv.querySelector(".oldStock").value) || 0;
-  const newVal = parseInt(bookDiv.querySelector(".newStock").value) || 0;
-  const newDemand = parseInt(bookDiv.querySelector(".newDemand").value) || 0;
+  try {
+    const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: "application/json" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const safeName = (jsonData.school_code || 'ftb').toString().replace(/\s+/g, '_');
+    a.download = `${safeName}.json`;
+    a.click();
+    showSnackbar("JSON file downloaded");
 
-  // Net demand
-  const net = enrollment - (oldVal + newVal + newDemand);
-  bookDiv.querySelector(".netDemand").value = net >= 0 ? net : 0;
+    // --- SUCCESS: Clear localStorage & reset form (auto-clear as requested) ---
+    localStorage.removeItem(STORAGE_KEY);
 
-  // Validation
-  if(newDemand - enrollment > 5){
-    bookDiv.querySelector(".newDemand").classList.add("border-red-500");
-  } else {
-    bookDiv.querySelector(".newDemand").classList.remove("border-red-500");
+    // Clear UI fields
+    document.getElementById('schoolCode').value = "";
+    document.getElementById('schoolName').value = "";
+    document.getElementById('district').value = "";
+    document.getElementById('tehsil').value = "";
+    document.getElementById('circleOffice').value = "";
+    document.getElementById('gender').value = "";
+    document.getElementById('levelSelect').value = "";
+    document.getElementById('date').value = new Date().toISOString().split("T")[0];
+    document.getElementById('monitorLogin').value = "";
+    document.getElementById('appVersion').value = "1.0.0";
+    document.getElementById('withoutEmis').checked = false;
+    document.getElementById('isFata').checked = false;
+    document.getElementById('isGCS').checked = false;
+    const statusRadios = document.querySelectorAll('input[name="status"]'); statusRadios.forEach(r=>r.checked=false);
+    document.getElementById('lat').value = "";
+    document.getElementById('long').value = "";
+    document.getElementById('focalName').value = "";
+    document.getElementById('focalContact').value = "";
+    document.getElementById('remarks').value = "";
+
+    // remove classes
+    document.getElementById('classesContainer').innerHTML = "";
+
+  } catch(e){
+    console.error("Download failed", e);
+    showSnackbar("Download failed");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Download JSON";
   }
 }
 
-// --- Download JSON ---
-function downloadJSON(){
-  const data = {
-    school_code:document.getElementById('schoolCode').value,
-    school_name:document.getElementById('schoolName').value,
-    district:document.getElementById('district').value,
-    tehsil:document.getElementById('tehsil').value,
-    gender:document.getElementById('gender').value,
-    level:document.getElementById('levelSelect').value,
-    circle_office:"",
-    lat:document.getElementById('latitude').value,
-    long:document.getElementById('longitude').value,
-    date:document.getElementById('date').value,
-    monitor_login:document.getElementById('monitorLogin').value,
-    app_version:document.getElementById('appVersion').value,
-    without_emis:document.getElementById('withoutEmis').checked?"1":"0",
-    isFata:document.getElementById('isFata').checked?"1":"0",
-    isGCS:document.getElementById('isGCS').checked?"1":"0",
-    status:document.querySelector('input[name="status"]:checked')?.value||'',
-    classes:[]
-  };
-
-  let allClasses = document.querySelectorAll(".bg-gray-50");
-  allClasses.forEach(clsDiv=>{
-    const clsName = clsDiv.dataset.class;
-    let booksData = [];
-    clsDiv.querySelectorAll(".books-container > div").forEach(bookDiv=>{
-      booksData.push({
-        book:bookDiv.querySelector("span").innerText,
-        oldStock:bookDiv.querySelector(".oldStock").value,
-        newStock:bookDiv.querySelector(".newStock").value,
-        newDemand:bookDiv.querySelector(".newDemand").value,
-        netDemand:bookDiv.querySelector(".netDemand").value
-      });
-    });
-    data.classes.push({class:clsName,enrollment:enrollmentData[clsName]||0,books:booksData});
-  });
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${data.school_code || 'school'}_ftb.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  showSnackbar("JSON Downloaded Successfully!");
-}
-
-// --- Snackbar ---
-function showSnackbar(msg){
-  const s = document.getElementById('snackbar');
-  s.innerText = msg;
-  s.classList.add('opacity-100');
-  setTimeout(()=>s.classList.remove('opacity-100'),3000);
-}
-
+/* =========================
+   Init on load
+   ========================= */
+window.addEventListener('load', ()=>{
+  // auto-fill date
+  document.getElementById("date").value = new Date().toISOString().split("T")[0];
+  // try to get location (will fill lat/long if user accepts)
+  // do not spam snackbar on auto attempt
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      document.getElementById('lat').value = pos.coords.latitude.toFixed(7);
+      document.getElementById('long').value = pos.coords.longitude.toFixed(7);
+    }, ()=>{/*ignore*/},{timeout:7000});
+  }
+  // restore saved draft if any
+  restoreDraft();
+});
 </script>
 </body>
 </html>
