@@ -483,14 +483,37 @@ async function downloadJSON(event){
 classDiv.querySelectorAll(".newDemand").forEach(nd=>{
   const newVal = nd.value === "" ? null : parseInt(nd.value);
 
+  // Remove any old error message before adding a new one
+  let errorMsg = nd.parentNode.querySelector(".error-text");
+  if(errorMsg) errorMsg.remove();
+
   if(newVal === null){
     nd.classList.add('border-red-500','error-shake');
     setTimeout(()=>nd.classList.remove('error-shake'),300);
     valid = false;
+
+    // Add message
+    const msg = document.createElement("div");
+    msg.className = "error-text text-red-600 text-sm mt-1";
+    msg.innerText = "New demand is required";
+    nd.parentNode.appendChild(msg);
+
+  } else if(enrollNum !== null && newVal > enrollNum + 5){
+    nd.classList.add('border-red-500','error-shake');
+    setTimeout(()=>nd.classList.remove('error-shake'),300);
+    valid = false;
+
+    // Add message
+    const msg = document.createElement("div");
+    msg.className = "error-text text-red-600 text-sm mt-1";
+    msg.innerText = `Demand cannot exceed enrollment + 5 (max ${enrollNum + 5})`;
+    nd.parentNode.appendChild(msg);
+
   } else {
     nd.classList.remove('border-red-500');
   }
 });
+
 
 
     // Ensure books are added if enrollment > 0
@@ -633,6 +656,7 @@ window.addEventListener('load', ()=>{
 </script>
 </body>
 </html>
+
 
 
 
