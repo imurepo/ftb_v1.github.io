@@ -488,7 +488,7 @@ async function downloadJSON(event){
         return;
       }
       const newVal = parseInt(nd.value) || 0;
-      if(enrollNum !== null && Math.abs(newVal - enrollNum) > 5){
+      if(enrollNum !== null && Math.abs(newVal - enrollNum) < 5){
         nd.classList.add('border-red-500','error-shake');
         setTimeout(()=>nd.classList.remove('error-shake'),300);
         valid = false;
@@ -637,3 +637,4 @@ window.addEventListener('load', ()=>{
 </script>
 </body>
 </html>
+
