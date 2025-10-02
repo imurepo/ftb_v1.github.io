@@ -480,24 +480,18 @@ async function downloadJSON(event){
   document.querySelectorAll("#classesContainer .bg-gray-50").forEach(classDiv=>{
     const enrollVal = classDiv.querySelector('.enroll')?.value.trim() || "";
     const enrollNum = enrollVal === "" ? null : parseInt(enrollVal);
-    classDiv.querySelectorAll(".newDemand").forEach(nd=>{
-      if((nd.value || "").toString().trim() === ""){
-        nd.classList.add('border-red-500','error-shake');
-        setTimeout(()=>nd.classList.remove('error-shake'),300);
-        valid = false;
-        return;
-      }
-        if(enrollNum !== null && Math.abs(newVal - enrollNum) <= 5){
-        nd.classList.add('border-red-500','error-shake');
-        setTimeout(()=>nd.classList.remove('error-shake'),300);
-        valid = false;
-      } else {
-        nd.classList.remove('border-red-500');
-      }
-     
+classDiv.querySelectorAll(".newDemand").forEach(nd=>{
+  const newVal = nd.value === "" ? null : parseInt(nd.value);
 
-     
-    });
+  if(newVal === null){
+    nd.classList.add('border-red-500','error-shake');
+    setTimeout(()=>nd.classList.remove('error-shake'),300);
+    valid = false;
+  } else {
+    nd.classList.remove('border-red-500');
+  }
+});
+
 
     // Ensure books are added if enrollment > 0
     if(enrollNum > 0 && classDiv.querySelectorAll('[data-book]').length === 0){
@@ -639,6 +633,7 @@ window.addEventListener('load', ()=>{
 </script>
 </body>
 </html>
+
 
 
 
